@@ -45,3 +45,5 @@ for ii=1:N
 end
 
 input = Read_TempF(fname);
+
+save([fname,'output'],'input','-v7.3')

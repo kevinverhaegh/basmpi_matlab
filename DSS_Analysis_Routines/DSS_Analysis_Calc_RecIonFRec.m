@@ -66,6 +66,13 @@ else
     DenMin = 5e18;
 end
 
+%maximum density
+if isfield(input,'DenMax')
+    DenMax = input.DenMax;
+else
+    DenMax = 1.5e20;
+end
+
 %Correction algorithm for Frec
 if isfield(input, 'FRecForceTrend')
     DoFRecForceTrend = input.FRecForceTrend;
@@ -161,6 +168,12 @@ if ~isfield(input,'D2pDm_model')
     D2pDm_model = 2;
 else
     D2pDm_model = input.D2pDm_model;
+end
+
+if ~isfield(input,'TeR_filter')
+    TeR_filter=0;
+else
+    TeR_filter = input.TeR_filter;
 end
 
 %Inclusion of uncertainties in the ADAS & YACORA coefficients
@@ -265,12 +278,14 @@ for j=1:numel(n1Int(1,:))
             while NOK==1
                
                 Slice = squeeze(DenMC(i,j,:));
-                V = find(Slice<DenMin);
+                V1 = find(Slice<DenMin);
+                V2 = find(Slice>DenMax);
+                V = [V1; V2];
                 if ~isempty(V)
                 Vr = randn(numel(V),1);
                 Vn = Den(i,j) + DenErr(i,j).*Vr; 
                 randn_DenMC(V) = Vr;
-                DenMC(i,j,(DenMC(i,j,:)<DenMin)) = Vn;
+                DenMC(i,j,V) = Vn;
                 else
                     NOK=0;
                 end
@@ -480,6 +495,11 @@ parfor i=1:numel(n1Int(:,1))
     TeEMC1(i,:,:) = TeEMC1t;
     %TeEMC2(i,:,:) = TeEMC2t;
     TeRMC2(i,:,:) = TeRMC2t;
+end
+
+if TeR_filter
+    TeRMC2(isnan(TeRMC2)) = 0.2;
+    TeRMC2 = TeRMC2 .* (n1IntMC./n1IntMC);
 end
 
 tp = toc;
@@ -797,8 +817,9 @@ if isfield(input.input,'DaMea')
         fTR.*(1 - fRmRH2pR).*reshape(PEC_D2pT(4,:)./PEC_D2pT(1,:),size(DenMC)));
     
     if n1MolMCFilter
-    n1MolMC(n1MolMC>n1IntTotMC) = NaN;
-    n2MolMC(n2MolMC>n2IntTotMC) = NaN;
+        %X = rand(size(n1MolMC));
+        n1MolMC(n1MolMC>n1IntTotMC) = 0.975.*n1IntTotMC(n1MolMC>n1IntTotMC);
+        n2MolMC(n2MolMC>n2IntTotMC) = 0.975.*n2IntTotMC(n2MolMC>n2IntTotMC);
     end
     
     n1MolMCD2 = (n1MolMC./n1MolMC).*DaMolMC.*((1-fTR).*reshape(PEC_D2T(3,:)./PEC_D2T(1,:),size(DenMC)));

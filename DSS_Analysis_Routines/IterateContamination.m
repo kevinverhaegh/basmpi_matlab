@@ -1,8 +1,24 @@
 %Script for using DSS_Analysis_Calc_RecIonFRec in an iterative way to
 %include plasma-molecule interaction
 
+if isfield(settings,'starting_contamin')
+    starting_contamin_n1 = settings.starting_contamin.n1;
+    starting_contamin_n2 = settings.starting_contamin.n2;
+else
+    starting_contamin_n1 = 0.*inputBase.input.n1Int;
+    starting_contamin_n2 = 0.*inputBase.input.n1Int;
+end
+
+inputBase.input.n1Int = inputBase.input.n1Int .* (1-starting_contamin_n1);
+inputBase.input.n2Int = inputBase.input.n2Int .* (1-starting_contamin_n2);
+
 %analysis without assuming plasma-mol. influences higher-n Balmer line
 inputBase = DSS_Analysis_Calc_RecIonFRec(inputBase.input);
+
+inputBase.input.n1Int = inputBase.input.n1Int ./ (1-starting_contamin_n1);
+inputBase.input.n2Int = inputBase.input.n2Int ./ (1-starting_contamin_n2);
+inputBase.inputMC.n1IntTotMC = inputBase.inputMC.n1IntTotMC ./ repmat((1-starting_contamin_n1),1,1,inputBase.input.Iter);
+inputBase.inputMC.n2IntTotMC = inputBase.inputMC.n2IntTotMC ./ repmat((1-starting_contamin_n2),1,1,inputBase.input.Iter);
 
 %save intermediate result
 save('tempBase','inputBase','-v7.3');
@@ -13,7 +29,6 @@ ConvCritM = 2e-3;
 ConvCritB = 2e-2; % 68 conf. interval should be between plus/minus this
 Epss = 2e-4; %numerical accuracy to distinguish from zero
 ConvDura = 4; %how many analysis runs have to be converged according to the above criteria
-RegenNM = 0; %how often the code tries to 'regenerate' kicked out data
 
 %do first iteration
 clear input Cn1MolMCd
@@ -31,16 +46,16 @@ save('temp_1','temp','-v7.3');
 
 Ctimer = 0;
 
-for i=2:50 %loop for remaining iterations
+for i=2:10 %loop for remaining iterations
    %as above
    input{i} = input{i-1};
    input{i-1} = [];
    input{i}.input.inputMC = inputBase.inputMC;
    input{i}.input.inputMC.n1IntMC = input{i}.input.inputMC.n1IntTotMC - input{i}.ResultMolMC.n1MolMC;
    input{i}.input.inputMC.n2IntMC = input{i}.input.inputMC.n2IntTotMC - input{i}.ResultMolMC.n2MolMC;
-   if i<RegenNM %apply regeneration for a certain number of iterations
-    input{i}.input.inputMC = RegenerateNaN(input{i}.input);
-   end
+   %if i<RegenNM %apply regeneration for a certain number of iterations
+    %input{i}.input.inputMC = RegenerateNaN(input{i}.input);
+   %end
    input{i} = DSS_Analysis_Calc_RecIonFRec(input{i}.input);
    %figure
    Cn1MolMCd(i,:,:,:) = (input{i}.ResultMolMC.n1MolMC-(input{i}.inputMC.n1IntTotMC-input{i}.inputMC.n1IntMC))./input{i}.ResultMolMC.n1MolMC; %relative change in contamination

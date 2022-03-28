@@ -256,16 +256,12 @@ else
     N=4;
 end
 %sample multivariate distribution
-u1 = 1;
-u2 = 1;
-s = nanmean(n1IntErr(:)./n1Int(:));
-r = RelErr;
 
-correl_coeff = 0.5*((u1/u2)^2 + 1 - (r*u2/s)^2)/(u1/u2); 
-
-covariance = ((s.^2).*ones(N,N)).*(correl_coeff*(~eye(N)) + eye(N)*1);
-
-R = mvnrnd(ones(N,1),covariance,Iter);
+if license('test','mvnrd')==1
+    R = get_correlated_errors(mean(n1IntErr(:)./n1Int(:),'omitnan'), RelErr, Iter, N);
+else
+    R = get_correlated_errors_python(mean(n1IntErr(:)./n1Int(:),'omitnan'), RelErr, Iter, N);
+end
 
 %adjust randn_DenMC
 %% utilize random vectors to assign the MC values for the density using rejection samplign to account for minimum density
@@ -351,7 +347,7 @@ tic
 parfor i=1:dimen(1)
     FRec1MCt = zeros(dimen(2), numel(DenMC(1,1,:)));
     FRec2MCt = FRec1MCt;
-    [ii] = find(nansum(n1Int,1)>0);
+    [ii] = find(sum(n1Int,1,"omitnan")>0);
     
     DenMCs = reshape(DenMC(i,:,:),[numel(n1Int(1,:)) Iter]);
     noneMCs = reshape(noneMC(i,:,:), [numel(n1Int(1,:)) Iter]);
@@ -366,8 +362,8 @@ parfor i=1:dimen(1)
         FRec1 = PR1./(squeeze(noneMCs(j,:)')*ones(size(Te)).*PE1 + PR1);
         FRec2 = PR2./(squeeze(noneMCs(j,:)')*ones(size(Te)).*PE2 + PR2);
         %clear PE2 PR2 PE1 PR1
-        [Mi,Ii] = nanmin(LR,[],2);
-        [Ma,Ia] = nanmax(LR,[],2);
+        [Mi,Ii] = min(LR,[],2,"omitnan");
+        [Ma,Ia] = max(LR,[],2,"omitnan");
         FRec1MCtt = zeros(numel(noneMCs(j,:)),1)+NaN;
         FRec2MCtt = zeros(numel(noneMCs(j,:)),1)+NaN;
         for k=1:numel(noneMCs(j,:))
@@ -468,7 +464,7 @@ parfor i=1:numel(n1Int(:,1))
     TeEMC1t = zeros(numel(n1Int(i,:)), Iter)+NaN;
     %TeEMC2t = TeEMC1t;
     TeRMC2t = TeEMC1t;    
-    [ii] = find(nansum(n1Int,1)>0);
+    [ii] = find(sum(n1Int,1,"omitnan")>0);
     DenMCs = reshape(DenMC(i,:,:),[numel(n1Int(1,:)) Iter]);
     DLMCs = reshape(DLMC(i,:,:),[numel(n1Int(1,:)) Iter]);
     noneMCs = reshape(noneMC(i,:,:), [numel(n1Int(1,:)) Iter]);
@@ -826,7 +822,7 @@ if isfield(input.input,'DaMea')
     n1MolMCDm = (n1MolMC./n1MolMC).*DaMolMC.*fTR.*fRmRH2pR.*reshape(PEC_DmT(3,:)./PEC_DmT(1,:),size(DenMC));
     n1MolMCD2p = (n1MolMC./n1MolMC).*DaMolMC.*fTR.*(1 - fRmRH2pR).*reshape(PEC_D2pT(3,:)./PEC_D2pT(1,:),size(DenMC));
     
-%     [ii] = find(nansum(n1Int,1)>0);
+%     [ii] = find(sum(n1Int,1,'omitnan')>0);
 %     for i=1:ii
 %        Cn1MolMC(:,i,:) = DSS_Aux_inpaint_nans(squeeze(Cn1MolMC(:,i,:)),4); 
 %        Cn2MolMC(:,i,:) = DSS_Aux_inpaint_nans(squeeze(Cn2MolMC(:,i,:)),4);
@@ -871,3 +867,25 @@ for i=1:numel(FRec(:,1))
     end
     
 end
+
+function R=get_correlated_errors(AbsErr,RelErr,Iter,N)
+
+%sample multivariate distribution
+u1 = 1;
+u2 = 1;
+s = AbsErr;
+r = RelErr;
+
+correl_coeff = 0.5*((u1/u2)^2 + 1 - (r*u2/s)^2)/(u1/u2); 
+
+covariance = ((s.^2).*ones(N,N)).*(correl_coeff*(~eye(N)) + eye(N)*1);
+
+R = mvnrnd(ones(N,1),covariance,Iter);
+
+function R=DSS_Aux_get_correlated_errors_python(AbsErr,RelErr,Iter,N)
+
+system(['source /common/home/kver/PycharmProjects/dms_nf_letter/venv/bin/activate ; python -c ''from dms.analysis.emission.Balmer_analysis import get_correlated_errors; R = get_correlated_errors(', num2str(AbsErr), ', ', num2str(RelErr), ', ', num2str(Iter), ', ', num2str(N), '); from scipy.io import savemat; savemat("R.mat", {"R" : R})'''])
+
+load('R.mat')
+
+delete R.mat

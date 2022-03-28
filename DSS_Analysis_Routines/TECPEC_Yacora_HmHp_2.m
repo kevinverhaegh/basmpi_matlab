@@ -39,9 +39,19 @@ Ne(Ne<min(nel)) = min(nel);
 Ne(Ne>max(nel)) = max(nel);
 
 %interrogate fittedmodel
-AdjF = fittedmodel(TiHmP,TiHpP);
-AdjF(AdjF<fittedmodel_min) = fittedmodel_min;
-AdjF(AdjF>fittedmodel_max) = fittedmodel_max;
+if license('test', 'curveFitter')==1
+    AdjF = fittedmodel(TiHmP,TiHpP);
+    AdjF(AdjF<fittedmodel_min) = fittedmodel_min;
+    AdjF(AdjF>fittedmodel_max) = fittedmodel_max;
+else
+    A = load([matlab_home,'/data_files/Yacora/HmHp_N_2/Yacora_HmHp_2'],'AdjF','TiHmP','TiHpP');
+    [xx,yy] = meshgrid(A.TiHmP, A.TiHpP);
+    AdjF = griddata(xx,yy,A.AdjF,TiHmP,TiHpP);
+    AdjF(TiHmP>max(A.TiHmP,[],'omitnan')) = fittedmodel_min;
+    AdjF(TiHpP>max(A.TiHpP,[],'omitnan')) = fittedmodel_min;
+    AdjF(TiHmP<min(A.TiHmP,[],'omitnan')) = fittedmodel_max;
+    AdjF(TiHpP<min(A.TiHpP,[],'omitnan')) = fittedmodel_max;
+end
 
 %for j=1:numel(Ne)
             for i=1:numel(N)

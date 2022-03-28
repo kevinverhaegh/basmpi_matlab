@@ -40,7 +40,7 @@ input{1}.input.inputMC.n2IntMC = input{1}.input.inputMC.n2IntTotMC - input{1}.Re
 input{1} = DSS_Analysis_Calc_RecIonFRec(input{1}.input); %analyse
 Cn1MolMCd(1,:,:,:) = (input{1}.ResultMolMC.n1MolMC-inputBase.ResultMolMC.n1MolMC)./input{1}.ResultMolMC.n1MolMC; %relative change in molecular contamination estimates for the lowest-n Balmer line used in the atomic analysis
 D = Cn1MolMCd(1,:,:,:);
-Conv(1,:)= quantile(D(:),[0.5,0.16,0.84]); %calculate quantiles of the above changes in molecular contamination
+Conv(1,:)= DSS_Aux_wprctile(D(~isnan(D)),[0.5,0.16,0.84]); %calculate quantiles of the above changes in molecular contamination
 temp = input{1};
 save('temp_1','temp','-v7.3');
 
@@ -60,7 +60,7 @@ for i=2:10 %loop for remaining iterations
    %figure
    Cn1MolMCd(i,:,:,:) = (input{i}.ResultMolMC.n1MolMC-(input{i}.inputMC.n1IntTotMC-input{i}.inputMC.n1IntMC))./input{i}.ResultMolMC.n1MolMC; %relative change in contamination
    D = Cn1MolMCd(i,:,:,:);
-   Conv(i,:)= quantile(D(:),[0.5,0.16,0.84]); %quantiles based on this
+   Conv(i,:)= DSS_Aux_wprctile(D(~isnan(D)),[0.5,0.16,0.84]); %quantiles based on this
    %apply convergence criteria based on quantiles
     if (abs(Conv(i,1)) < ConvCritM) && (Conv(i,2) < Epss) && (Conv(i,3) >-Epss) && (Conv(i,2) > -ConvCritB) && (Conv(i,3) < ConvCritB)
         Ctimer = Ctimer+1; %converged; add +1 to convergence timer
@@ -111,28 +111,28 @@ fTRI = int16(isnan(input.ResultMolMC.fTR));
 
 for i=(numel(Conv(:,1))-ConvDura+1):(numel(Conv(:,1))-1) %iterate over the last ConvDura discharges and average over these
     load(['temp_',num2str(i)]) %load data
-    tmp = cat(4,TeEMC1,temp.ResultMC.TeEMC1); TeEMC1 = nansum(tmp,4);  %concatenate all data together with all the other data; then sum the data
-    tmp = cat(4,TeEMC1I,isnan(temp.ResultMC.TeEMC1)); TeEMC1I = nansum(tmp,4);
-    tmp = cat(4,TeRMC2,temp.ResultMC.TeRMC2); TeRMC2 = nansum(tmp,4);
-    tmp = cat(4,TeRMC2I,isnan(temp.ResultMC.TeRMC2)); TeRMC2I = nansum(tmp,4);
-    tmp = cat(4,FRec1MC,temp.ResultMC.FRec1MC); FRec1MC = nansum(tmp,4);
-    tmp = cat(4,FRec1MCI,isnan(temp.ResultMC.FRec1MC)); FRec1MCI = nansum(tmp,4);
-    tmp = cat(4,FRec2MC,temp.ResultMC.FRec2MC); FRec2MC = nansum(tmp,4);
-    tmp = cat(4,FRec2MCI,isnan(temp.ResultMC.FRec2MC)); FRec2MCI = nansum(tmp,4);
-    tmp = cat(4,n1IntMC,temp.inputMC.n1IntMC); n1IntMC = nansum(tmp,4);
-    tmp = cat(4,n1IntMCI,isnan(temp.inputMC.n1IntMC)); n1IntMCI = nansum(tmp,4);
-    tmp = cat(4,n2IntMC,temp.inputMC.n2IntMC); n2IntMC = nansum(tmp,4);
-    tmp = cat(4,n2IntMCI,isnan(temp.inputMC.n2IntMC)); n2IntMCI = nansum(tmp,4);
-    tmp = cat(4,DaMolMC,temp.ResultMolMC.DaMolMC); DaMolMC = nansum(tmp,4);
-    tmp = cat(4,DaMolMCI,isnan(temp.ResultMolMC.DaMolMC)); DaMolMCI = nansum(tmp,4);
-    tmp = cat(4,n1MolMC,temp.ResultMolMC.n1MolMC); n1MolMC = nansum(tmp,4);
-    tmp = cat(4,n1MolMCI,isnan(temp.ResultMolMC.n1MolMC)); n1MolMCI = nansum(tmp,4);
-    tmp = cat(4,n2MolMC,temp.ResultMolMC.n2MolMC); n2MolMC = nansum(tmp,4);
-    tmp = cat(4,n2MolMCI,isnan(temp.ResultMolMC.n2MolMC)); n2MolMCI = nansum(tmp,4);
-    tmp = cat(4,fRmRH2pR,temp.ResultMolMC.fRmRH2pR); fRmRH2pR = nansum(tmp,4);
-    tmp = cat(4,fRmRH2pRI,isnan(temp.ResultMolMC.fRmRH2pR)); fRmRH2pRI = nansum(tmp,4);
-    tmp = cat(4,fTR,temp.ResultMolMC.fTR); fTR = nansum(tmp,4);
-    tmp = cat(4,fTRI,isnan(temp.ResultMolMC.fTR)); fTRI = nansum(tmp,4);
+    tmp = cat(4,TeEMC1,temp.ResultMC.TeEMC1); TeEMC1 = sum(tmp,4,"omitnan");  %concatenate all data together with all the other data; then sum the data
+    tmp = cat(4,TeEMC1I,isnan(temp.ResultMC.TeEMC1)); TeEMC1I = sum(tmp,4,"omitnan");
+    tmp = cat(4,TeRMC2,temp.ResultMC.TeRMC2); TeRMC2 = sum(tmp,4,'omitnan');
+    tmp = cat(4,TeRMC2I,isnan(temp.ResultMC.TeRMC2)); TeRMC2I = sum(tmp,4,'omitnan');
+    tmp = cat(4,FRec1MC,temp.ResultMC.FRec1MC); FRec1MC = sum(tmp,4,'omitnan');
+    tmp = cat(4,FRec1MCI,isnan(temp.ResultMC.FRec1MC)); FRec1MCI = sum(tmp,4,'omitnan');
+    tmp = cat(4,FRec2MC,temp.ResultMC.FRec2MC); FRec2MC = sum(tmp,4,'omitnan');
+    tmp = cat(4,FRec2MCI,isnan(temp.ResultMC.FRec2MC)); FRec2MCI = sum(tmp,4,'omitnan');
+    tmp = cat(4,n1IntMC,temp.inputMC.n1IntMC); n1IntMC = sum(tmp,4,'omitnan');
+    tmp = cat(4,n1IntMCI,isnan(temp.inputMC.n1IntMC)); n1IntMCI = sum(tmp,4,'omitnan');
+    tmp = cat(4,n2IntMC,temp.inputMC.n2IntMC); n2IntMC = sum(tmp,4,'omitnan');
+    tmp = cat(4,n2IntMCI,isnan(temp.inputMC.n2IntMC)); n2IntMCI = sum(tmp,4,'omitnan');
+    tmp = cat(4,DaMolMC,temp.ResultMolMC.DaMolMC); DaMolMC = sum(tmp,4,'omitnan');
+    tmp = cat(4,DaMolMCI,isnan(temp.ResultMolMC.DaMolMC)); DaMolMCI = sum(tmp,4,'omitnan');
+    tmp = cat(4,n1MolMC,temp.ResultMolMC.n1MolMC); n1MolMC = sum(tmp,4,'omitnan');
+    tmp = cat(4,n1MolMCI,isnan(temp.ResultMolMC.n1MolMC)); n1MolMCI = sum(tmp,4,'omitnan');
+    tmp = cat(4,n2MolMC,temp.ResultMolMC.n2MolMC); n2MolMC = sum(tmp,4,'omitnan');
+    tmp = cat(4,n2MolMCI,isnan(temp.ResultMolMC.n2MolMC)); n2MolMCI = sum(tmp,4,'omitnan');
+    tmp = cat(4,fRmRH2pR,temp.ResultMolMC.fRmRH2pR); fRmRH2pR = sum(tmp,4,'omitnan');
+    tmp = cat(4,fRmRH2pRI,isnan(temp.ResultMolMC.fRmRH2pR)); fRmRH2pRI = sum(tmp,4,'omitnan');
+    tmp = cat(4,fTR,temp.ResultMolMC.fTR); fTR = sum(tmp,4,'omitnan');
+    tmp = cat(4,fTRI,isnan(temp.ResultMolMC.fTR)); fTRI = sum(tmp,4,'omitnan');
 end
 
 %calculate over how many converged points the sum took place
